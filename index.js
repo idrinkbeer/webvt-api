@@ -3,10 +3,10 @@ import multer from "multer";
 import fs from "fs";
 import cors from "cors";
 
-app.use(cors());
-
 const app = express();
 const PORT = process.env.PORT;
+
+app.use(cors());
 
 // ensure uploads folder exists
 if (!fs.existsSync("uploads")) {
