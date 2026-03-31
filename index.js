@@ -30,3 +30,8 @@ app.use("/uploads", express.static("uploads"));
 app.listen(PORT, () => {
   console.log("API running on port 3001");
 });
+
+//TEST API
+app.get("/", (req, res) => {
+  res.send("API is working");
+});
