@@ -35,3 +35,8 @@ app.listen(PORT, () => {
 app.get("/", (req, res) => {
   res.send("API is working");
 });
+
+//TEST UPLOADS
+app.get("/test", (req, res) => {
+  res.send("Upload route ready");
+});
