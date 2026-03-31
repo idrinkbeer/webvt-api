@@ -1,6 +1,9 @@
 import express from "express";
 import multer from "multer";
 import fs from "fs";
+import cors from "cors";
+
+app.use(cors());
 
 const app = express();
 const PORT = process.env.PORT;
