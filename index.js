@@ -4,18 +4,22 @@ import fs from "fs";
 import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT;
-
 app.use(cors());
 
+const PORT = process.env.PORT;
+
+// 🔥 USE ABSOLUTE PATH (this fixes your issue)
+const uploadDir = "/uploads";
+
 // ensure uploads folder exists
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// storage config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + ".wav");
@@ -24,22 +28,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// upload endpoint
 app.post("/upload", upload.single("file"), (req, res) => {
   res.json({ success: true, file: req.file.filename });
 });
 
-app.use("/uploads", express.static("uploads"));
+// serve uploads folder
+app.use("/uploads", express.static(uploadDir));
 
-app.listen(PORT, () => {
-  console.log("API running on port 3001");
-});
-
-//TEST API
+// test route
 app.get("/", (req, res) => {
   res.send("API is working");
 });
 
-//TEST UPLOADS
-app.get("/test", (req, res) => {
-  res.send("Upload route ready");
+app.listen(PORT, () => {
+  console.log("API running on port", PORT);
 });
