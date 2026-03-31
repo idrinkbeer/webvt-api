@@ -3,7 +3,7 @@ import multer from "multer";
 import fs from "fs";
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT;
 
 // ensure uploads folder exists
 if (!fs.existsSync("uploads")) {
