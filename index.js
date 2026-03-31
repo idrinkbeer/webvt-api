@@ -9,7 +9,7 @@ app.use(cors());
 const PORT = process.env.PORT;
 
 // 🔥 USE ABSOLUTE PATH (this fixes your issue)
-const uploadDir = "/uploads";
+const uploadDir = process.env.UPLOAD_DIR || "/uploads";
 
 // ensure uploads folder exists
 if (!fs.existsSync(uploadDir)) {
