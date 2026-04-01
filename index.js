@@ -1,14 +1,13 @@
 import express from "express";
-import multer from "multer";
 import fs from "fs";
 import cors from "cors";
 import ftp from "basic-ftp";
+import uploadRoute from "./upload.js";
 
 const app = express();
 app.use(cors());
 
-import uploadRoute from "./upload.js";
-
+// ✅ Upload route (handles FTP)
 app.use("/upload", uploadRoute);
 
 const PORT = process.env.PORT || 3001;
@@ -26,28 +25,19 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, file.originalname)
-});
-
-const upload = multer({ storage });
-
-// upload endpoint
-app.post("/upload", upload.single("file"), (req, res) => {
-  res.json({ success: true, file: req.file.filename });
-});
-
-// serve uploads folder
+// optional static folder
 app.use("/uploads", express.static(uploadDir));
 
+// =====================
+// LOG LIST
+// =====================
 app.get("/logs", async (req, res) => {
   const client = new ftp.Client();
 
   try {
     await client.access(ftpConfig);
 
-    const list = await client.list("/"); // or your folder
+    const list = await client.list("/");
 
     const ascFiles = list
       .filter(file => file.name.endsWith(".ASC"))
@@ -63,6 +53,9 @@ app.get("/logs", async (req, res) => {
   client.close();
 });
 
+// =====================
+// FETCH LOG CONTENT
+// =====================
 app.get("/logs/:filename", async (req, res) => {
   const client = new ftp.Client();
 
@@ -85,7 +78,9 @@ app.get("/logs/:filename", async (req, res) => {
   client.close();
 });
 
-// test route
+// =====================
+// TEST
+// =====================
 app.get("/", (req, res) => {
   res.send("API is working");
 });
