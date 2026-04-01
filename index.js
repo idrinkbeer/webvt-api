@@ -3,14 +3,59 @@ import fs from "fs";
 import cors from "cors";
 import ftp from "basic-ftp";
 import uploadRoute from "./upload.js";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
 const app = express();
 app.use(cors());
 
 // ✅ Upload route (handles FTP)
-app.use("/upload", uploadRoute);
+app.use("/upload", auth, uploadRoute);
 
 const PORT = process.env.PORT;
+
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+
+const users = [
+  {
+    username: "admin",
+    password: "$2b$10$vPGGXvLlzLXvnrNvnm086.17j/3aNNJr2IRonGhfVHEykICYyKFTa" // bcrypt hash
+  }
+];
+
+app.post("/login", express.json(), async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find(u => u.username === username);
+  if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+
+  const token = jwt.sign(
+    { username },
+    JWT_SECRET,
+    { expiresIn: "12h" }
+  );
+
+  res.json({ token });
+});
+
+function auth(req, res, next) {
+  const header = req.headers.authorization;
+
+  if (!header) return res.sendStatus(401);
+
+  const token = header.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    res.sendStatus(403);
+  }
+}
 
 const ftpConfig = {
   host: process.env.FTP_HOST,
@@ -31,7 +76,7 @@ app.use("/uploads", express.static(uploadDir));
 // =====================
 // LOG LIST
 // =====================
-app.get("/logs", async (req, res) => {
+app.get("/logs", auth, async (req, res) => {
   const client = new ftp.Client();
 
   try {
@@ -56,7 +101,7 @@ app.get("/logs", async (req, res) => {
 // =====================
 // FETCH LOG CONTENT
 // =====================
-app.get("/logs/:filename", async (req, res) => {
+app.get("/logs/:filename", auth, async (req, res) => {
   const client = new ftp.Client();
 
   try {
