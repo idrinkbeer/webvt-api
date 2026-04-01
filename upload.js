@@ -21,7 +21,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const localPath = req.file.path;
 
     // 🔥 change this if needed
-    const remotePath = `/public_html/voicetracks/${req.body.cart}.webm`;
+    const remotePath = `/starbase479.com/AIRLOGS/${req.body.cart}.webm`;
 
     await client.uploadFrom(localPath, remotePath);
 
