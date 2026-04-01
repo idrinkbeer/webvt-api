@@ -1,38 +1,30 @@
-import ftp from "basic-ftp";
-
-const ftpConfig = {
-  host: "ftp.starbase479.com",
-  user: "AIRLOGS@starbase479.com",
-  password: "AirStudio@8990",
-  secure: false
-};
-
 import express from "express";
 import multer from "multer";
 import fs from "fs";
 import cors from "cors";
+import ftp from "basic-ftp";
 
 const app = express();
 app.use(cors());
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3001;
 
-// 🔥 USE ABSOLUTE PATH (this fixes your issue)
+const ftpConfig = {
+  host: "ftp.starbase479.com",
+  user: "AIRLOGS",
+  password: "AirStudio@8990",
+  secure: false
+};
+
 const uploadDir = process.env.UPLOAD_DIR || "/uploads";
 
-// ensure uploads folder exists
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// storage config
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + ".wav");
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, file.originalname)
 });
 
 const upload = multer({ storage });
