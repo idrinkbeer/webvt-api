@@ -7,25 +7,37 @@ import jwt from "jsonwebtoken";
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
+// =====================
+// USERS (simple auth)
+// =====================
 const USERS = {
-  admin: "yourpassword123" // change this
+  admin: "yourpassword123" // 🔥 CHANGE THIS
 };
 
-app.post("/login", express.json(), (req, res) => {
+// =====================
+// LOGIN
+// =====================
+app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
   if (USERS[username] !== password) {
     return res.status(401).json({ error: "Invalid login" });
   }
 
-  const token = jwt.sign({ username }, process.env.JWT_SECRET || "secret123", {
-    expiresIn: "7d"
-  });
+  const token = jwt.sign(
+    { username },
+    process.env.JWT_SECRET || "secret123",
+    { expiresIn: "7d" }
+  );
 
   res.json({ token });
 });
 
+// =====================
+// AUTH MIDDLEWARE
+// =====================
 function auth(req, res, next) {
   const header = req.headers.authorization;
 
@@ -41,14 +53,9 @@ function auth(req, res, next) {
   }
 }
 
-app.use("/upload", auth, uploadRoute);
-app.use("/logs", auth, logsRoute);
-
-// ✅ Upload route (handles FTP)
-app.use("/upload", uploadRoute);
-
-const PORT = process.env.PORT;
-
+// =====================
+// FTP CONFIG
+// =====================
 const ftpConfig = {
   host: process.env.FTP_HOST,
   user: process.env.FTP_USER,
@@ -56,19 +63,26 @@ const ftpConfig = {
   secure: false
 };
 
+// =====================
+// UPLOAD ROUTE (PROTECTED)
+// =====================
+app.use("/upload", auth, uploadRoute);
+
+// =====================
+// OPTIONAL STATIC
+// =====================
 const uploadDir = process.env.UPLOAD_DIR || "/uploads";
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// optional static folder
 app.use("/uploads", express.static(uploadDir));
 
 // =====================
-// LOG LIST
+// LOG LIST (PROTECTED)
 // =====================
-app.get("/logs", async (req, res) => {
+app.get("/logs", auth, async (req, res) => {
   const client = new ftp.Client();
 
   try {
@@ -91,9 +105,9 @@ app.get("/logs", async (req, res) => {
 });
 
 // =====================
-// FETCH LOG CONTENT
+// FETCH LOG CONTENT (PROTECTED)
 // =====================
-app.get("/logs/:filename", async (req, res) => {
+app.get("/logs/:filename", auth, async (req, res) => {
   const client = new ftp.Client();
 
   try {
@@ -121,6 +135,11 @@ app.get("/logs/:filename", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("API is working");
 });
+
+// =====================
+// START SERVER
+// =====================
+const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
   console.log("API running on port", PORT);
