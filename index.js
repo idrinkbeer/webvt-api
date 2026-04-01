@@ -3,9 +3,46 @@ import fs from "fs";
 import cors from "cors";
 import ftp from "basic-ftp";
 import uploadRoute from "./upload.js";
+import jwt from "jsonwebtoken";
 
 const app = express();
 app.use(cors());
+
+const USERS = {
+  admin: "yourpassword123" // change this
+};
+
+app.post("/login", express.json(), (req, res) => {
+  const { username, password } = req.body;
+
+  if (USERS[username] !== password) {
+    return res.status(401).json({ error: "Invalid login" });
+  }
+
+  const token = jwt.sign({ username }, process.env.JWT_SECRET || "secret123", {
+    expiresIn: "7d"
+  });
+
+  res.json({ token });
+});
+
+function auth(req, res, next) {
+  const header = req.headers.authorization;
+
+  if (!header) return res.sendStatus(401);
+
+  const token = header.split(" ")[1];
+
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET || "secret123");
+    next();
+  } catch {
+    res.sendStatus(403);
+  }
+}
+
+app.use("/upload", auth, uploadRoute);
+app.use("/logs", auth, logsRoute);
 
 // ✅ Upload route (handles FTP)
 app.use("/upload", uploadRoute);
