@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { Client } from "basic-ftp";
 import fs from "fs";
+import ffmpeg from "fluent-ffmpeg";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -17,9 +18,10 @@ router.post("/", upload.single("file"), async (req, res) => {
       secure: false,
     });
 
-    const localPath = req.file.path;
+    const webmPath = req.file.path;
+    const mp3Path = webmPath + ".mp3";
 
-    // 🔍 Try possible FTP base paths automatically
+    // 🔍 Find correct FTP path (runs once, then logs it)
     const testPaths = [
       "/AIRLOGS",
       "/starbase479.com/AIRLOGS",
@@ -40,20 +42,30 @@ router.post("/", upload.single("file"), async (req, res) => {
       }
     }
 
-    // ❌ If no valid path found
     if (!workingPath) {
       throw new Error("No valid FTP path found");
     }
 
-    // ✅ Final upload path
-    const remotePath = `${workingPath}/${req.body.cart}.webm`;
+    // 🎧 Convert to MP3
+    await new Promise((resolve, reject) => {
+      ffmpeg(webmPath)
+        .audioBitrate(128)
+        .toFormat("mp3")
+        .on("end", resolve)
+        .on("error", reject)
+        .save(mp3Path);
+    });
 
-    console.log("📤 Uploading to:", remotePath);
+    // ✅ Upload MP3
+    const remotePath = `${workingPath}/${req.body.cart}.mp3`;
 
-    await client.uploadFrom(localPath, remotePath);
+    console.log("📤 Uploading MP3 to:", remotePath);
 
-    // cleanup temp file
-    fs.unlinkSync(localPath);
+    await client.uploadFrom(mp3Path, remotePath);
+
+    // 🧹 cleanup temp files
+    fs.unlinkSync(webmPath);
+    fs.unlinkSync(mp3Path);
 
     res.json({ success: true, path: remotePath });
 
