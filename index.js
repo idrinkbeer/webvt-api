@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 const ftpConfig = {
   host: "ftp.starbase479.com",
-  user: "AIRLOGS",
+  user: "AIRLOGS@starbase479.com",
   password: "AirStudio@8990",
   secure: false
 };
