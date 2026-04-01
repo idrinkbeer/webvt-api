@@ -10,7 +10,7 @@ app.use(cors());
 // ✅ Upload route (handles FTP)
 app.use("/upload", uploadRoute);
 
-const PORT = process.env.PORT === "80" ? 3000 : (process.env.PORT || 3000);
+const PORT = process.env.PORT;
 
 const ftpConfig = {
   host: process.env.FTP_HOST,
