@@ -18,12 +18,16 @@ router.post("/", upload.single("file"), async (req, res) => {
       secure: false,
     });
 
-    // 👇 ADD THIS DEBUG BLOCK
-console.log("Current FTP directory:");
-console.log(await client.pwd());
+try {
+  console.log("Current FTP directory:");
+  console.log(await client.pwd());
 
-console.log("Listing current directory:");
-console.log(await client.list());
+  console.log("Listing current directory:");
+  const list = await client.list();
+  console.log(list.map(f => f.name)); // 👈 only names (faster)
+} catch (e) {
+  console.log("FTP debug failed:", e.message);
+}
     
     const localPath = req.file.path;
 
