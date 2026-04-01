@@ -13,9 +13,9 @@ app.use(cors());
 const PORT = process.env.PORT || 3001;
 
 const ftpConfig = {
-  host: "ftp.starbase479.com",
-  user: "AIRLOGS@starbase479.com",
-  password: "AirStudio@8990",
+  host: process.env.FTP_HOST,
+  user: process.env.FTP_USER,
+  password: process.env.FTP_PASS,
   secure: false
 };
 
