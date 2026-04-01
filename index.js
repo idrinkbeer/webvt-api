@@ -1,3 +1,12 @@
+import ftp from "basic-ftp";
+
+const ftpConfig = {
+  host: "YOUR_FTP_HOST",
+  user: "YOUR_USERNAME",
+  password: "YOUR_PASSWORD",
+  secure: false
+};
+
 import express from "express";
 import multer from "multer";
 import fs from "fs";
