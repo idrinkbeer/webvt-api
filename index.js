@@ -12,9 +12,8 @@ app.use(express.json());
 // =====================
 // USERS (simple auth)
 // =====================
-const USERS = {
-  admin: "yourpassword123" // 🔥 CHANGE THIS
-};
+const USERNAME = process.env.APP_USER || "admin";
+const PASSWORD = process.env.APP_PASS;
 
 // =====================
 // LOGIN
@@ -22,7 +21,7 @@ const USERS = {
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
-  if (USERS[username] !== password) {
+  if (username !== USERNAME || password !== PASSWORD) {
     return res.status(401).json({ error: "Invalid login" });
   }
 
