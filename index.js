@@ -1,9 +1,9 @@
 import ftp from "basic-ftp";
 
 const ftpConfig = {
-  host: "YOUR_FTP_HOST",
-  user: "YOUR_USERNAME",
-  password: "YOUR_PASSWORD",
+  host: "ftp.starbase479.com",
+  user: "AIRLOGS@starbase479.com",
+  password: "AirStudio@8990",
   secure: false
 };
 
@@ -44,6 +44,50 @@ app.post("/upload", upload.single("file"), (req, res) => {
 
 // serve uploads folder
 app.use("/uploads", express.static(uploadDir));
+
+app.get("/logs", async (req, res) => {
+  const client = new ftp.Client();
+
+  try {
+    await client.access(ftpConfig);
+
+    const list = await client.list("/"); // or your folder
+
+    const ascFiles = list
+      .filter(file => file.name.endsWith(".ASC"))
+      .map(file => file.name);
+
+    res.json(ascFiles);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "FTP error" });
+  }
+
+  client.close();
+});
+
+app.get("/logs/:filename", async (req, res) => {
+  const client = new ftp.Client();
+
+  try {
+    await client.access(ftpConfig);
+
+    const tempPath = `/tmp/${req.params.filename}`;
+
+    await client.downloadTo(tempPath, req.params.filename);
+
+    const content = fs.readFileSync(tempPath, "utf-8");
+
+    res.send(content);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching file");
+  }
+
+  client.close();
+});
 
 // test route
 app.get("/", (req, res) => {
