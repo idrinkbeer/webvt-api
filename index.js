@@ -3,6 +3,9 @@ import multer from "multer";
 import fs from "fs";
 import cors from "cors";
 import ftp from "basic-ftp";
+import uploadRoute from "./upload.js";
+
+app.use("/upload", uploadRoute);
 
 const app = express();
 app.use(cors());
