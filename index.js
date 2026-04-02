@@ -19,7 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const users = [
   {
     username: "admin",
-    password: "$2b$10$vPGGXvLlzLXvnrNvnm086.17j/3aNNJr2IRonGhfVHEykICYyKFTa" // bcrypt hash
+    password: "$2a$10$VcDJxi.dYue09sBQwdFth.aMLDjy.svYVQyIJWmRueWVHAoVOCc2G" // bcrypt hash
   }
 ];
 
