@@ -7,10 +7,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 const app = express();
-app.use(cors());
-
-// ✅ Upload route (handles FTP)
-app.use("/upload", auth, uploadRoute);
+app.use(cors({
+  origin: "*",
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 const PORT = process.env.PORT;
 
@@ -56,6 +56,9 @@ function auth(req, res, next) {
     res.sendStatus(403);
   }
 }
+
+// ✅ Upload route (handles FTP)
+app.use("/upload", auth, uploadRoute);
 
 const ftpConfig = {
   host: process.env.FTP_HOST,
