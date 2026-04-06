@@ -126,6 +126,8 @@ app.get("/logs/:filename", auth, async (req, res) => {
   client.close();
 });
 
+app.get("/audio/:filename", async (req, res) => {
+  
 // =====================
 // TEST
 // =====================
