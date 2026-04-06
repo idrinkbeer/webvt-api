@@ -138,7 +138,7 @@ app.get("/audio/:filename", auth, async (req, res) => {
     const filename = req.params.filename;
     const tempPath = `/tmp/${filename}`;
 
-    await client.downloadTo(tempPath, `/AIRLOGS/audio/${filename}`);
+    await client.downloadTo(tempPath, `/audio/${filename}`);
 
     res.sendFile(tempPath);
 
