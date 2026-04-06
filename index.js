@@ -127,30 +127,6 @@ app.get("/logs/:filename", auth, async (req, res) => {
 });
 
 // =====================
-// AUDIO STREAM
-// =====================
-app.get("/audio/:filename", async (req, res) => {
-  const client = new ftp.Client();
-
-  try {
-    await client.access(ftpConfig);
-
-    const filename = req.params.filename;
-    const tempPath = `/tmp/${filename}`;
-
-    await client.downloadTo(tempPath, `/audio/${filename}`);
-
-    res.sendFile(tempPath);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching audio");
-  }
-
-  client.close();
-});
-  
-// =====================
 // TEST
 // =====================
 app.get("/", (req, res) => {
