@@ -129,7 +129,7 @@ app.get("/logs/:filename", auth, async (req, res) => {
 // =====================
 // AUDIO STREAM
 // =====================
-app.get("/audio/:filename", auth, async (req, res) => {
+app.get("/audio/:filename", async (req, res) => {
   const client = new ftp.Client();
 
   try {
