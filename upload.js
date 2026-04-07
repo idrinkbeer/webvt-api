@@ -20,9 +20,9 @@ router.post("/", upload.single("file"), async (req, res) => {
     const localPath = req.file.path;
 
     // ✅ FINAL path (we already confirmed this works)
-    const remotePath = `/VTX/${req.body.cart}.wav`;
+    const remotePath = `/VTX/${req.body.cart}.mp3`;
 
-    console.log("📤 Uploading WAV to:", remotePath);
+    console.log("📤 Uploading MP3 to:", remotePath);
 
     await client.uploadFrom(localPath, remotePath);
 
