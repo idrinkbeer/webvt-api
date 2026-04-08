@@ -6,6 +6,14 @@ import uploadRoute from "./upload.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
+import { Dropbox } from "dropbox";
+import fetch from "node-fetch";
+
+const dbx = new Dropbox({
+  accessToken: process.env.DROPBOX_TOKEN,
+  fetch
+});
+
 const app = express();
 app.use(cors({
   origin: "*",
@@ -80,41 +88,33 @@ app.use("/uploads", express.static(uploadDir));
 // LOG LIST
 // =====================
 app.get("/logs", auth, async (req, res) => {
-  const client = new ftp.Client();
-
   try {
-    await client.access(ftpConfig);
+    const response = await dbx.filesListFolder({
+      path: "/LOGS"
+    });
 
-    const list = await client.list("/");
+    const files = response.result.entries
+      .filter(f => f.name.endsWith(".ASC"))
+      .map(f => f.name);
 
-    const ascFiles = list
-      .filter(file => file.name.endsWith(".ASC"))
-      .map(file => file.name);
-
-    res.json(ascFiles);
+    res.json(files);
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "FTP error" });
+    res.status(500).json({ error: "Dropbox error" });
   }
-
-  client.close();
 });
 
 // =====================
 // FETCH LOG CONTENT
 // =====================
 app.get("/logs/:filename", auth, async (req, res) => {
-  const client = new ftp.Client();
-
   try {
-    await client.access(ftpConfig);
+    const file = await dbx.filesDownload({
+      path: `/LOGS/${req.params.filename}`
+    });
 
-    const tempPath = `/tmp/${req.params.filename}`;
-
-    await client.downloadTo(tempPath, req.params.filename);
-
-    const content = fs.readFileSync(tempPath, "utf-8");
+    const content = file.result.fileBinary.toString("utf-8");
 
     res.send(content);
 
@@ -122,8 +122,6 @@ app.get("/logs/:filename", auth, async (req, res) => {
     console.error(err);
     res.status(500).send("Error fetching file");
   }
-
-  client.close();
 });
 
 // =====================
