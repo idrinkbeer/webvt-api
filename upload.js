@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { Dropbox } from "dropbox";
+import fetch from "node-fetch";
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const dbx = new Dropbox({
   accessToken: process.env.DROPBOX_TOKEN,
+  fetch
 });
 
 router.post("/", upload.single("file"), async (req, res) => {
