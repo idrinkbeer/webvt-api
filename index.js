@@ -126,6 +126,23 @@ app.get("/logs/:filename", auth, async (req, res) => {
   }
 });
 
+app.get("/audio/song/:filename", async (req, res) => {
+  try {
+    const file = await dbx.filesDownload({
+      path: `/MUS/${req.params.filename}`
+    });
+
+    const data = file.result?.fileBinary || file.fileBinary;
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(Buffer.from(data));
+
+  } catch (err) {
+    console.error("SONG ERROR:", err);
+    res.status(500).send("Error fetching song");
+  }
+});
+
 // =====================
 // TEST
 // =====================
