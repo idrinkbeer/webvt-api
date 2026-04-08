@@ -126,6 +126,31 @@ app.get("/logs/:filename", auth, async (req, res) => {
   }
 });
 
+
+// =====================
+// STREAM SONG FROM DROPBOX
+// =====================
+app.get("/audio/song/:filename", async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename).trim();
+
+    console.log("Fetching song:", filename);
+
+    const response = await dbx.filesDownload({
+      path: `/MUS/${filename}`
+    });
+
+    const fileBinary = response.result.fileBinary;
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(fileBinary);
+
+  } catch (err) {
+    console.error("SONG ERROR:", err);
+    res.status(404).send("Song not found");
+  }
+});
+
 // =====================
 // TEST
 // =====================
