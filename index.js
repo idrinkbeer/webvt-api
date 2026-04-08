@@ -1,7 +1,6 @@
 import express from "express";
 import fs from "fs";
 import cors from "cors";
-import ftp from "basic-ftp";
 import uploadRoute from "./upload.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
