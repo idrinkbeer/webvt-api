@@ -7,7 +7,6 @@ import bcrypt from "bcryptjs";
 
 import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
-import { spawn } from "child_process";
 
 const dbx = new Dropbox({
   accessToken: process.env.DROPBOX_TOKEN,
@@ -124,90 +123,6 @@ app.get("/logs/:filename", auth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching file");
-  }
-});
-
-app.get("/audio/song/:filename", async (req, res) => {
-  try {
-    const file = await dbx.filesDownload({
-      path: `/MUS/${req.params.filename}`
-    });
-
-    const data = file.result?.fileBinary || file.fileBinary;
-
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.send(Buffer.from(data));
-
-  } catch (err) {
-    console.error("SONG ERROR:", err);
-    res.status(500).send("Error fetching song");
-  }
-});
-
-app.get("/audio/clip", async (req, res) => {
-  try {
-    const { file, start, duration } = req.query;
-
-    if (!file) return res.status(400).send("Missing file");
-
-    const clipDuration = parseFloat(duration || 10);
-    let startTime = parseFloat(start || 0);
-
-    // 🔥 Download from Dropbox
-    const dbxFile = await dbx.filesDownload({
-      path: `/MUS/${file}`
-    });
-
-    const data = dbxFile.result?.fileBinary || dbxFile.fileBinary;
-    const buffer = Buffer.from(data);
-
-    // 🔥 Handle negative start (tail)
-    if (startTime < 0) {
-      const probe = spawn("ffprobe", [
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        "pipe:0"
-      ]);
-
-      probe.stdin.write(buffer);
-      probe.stdin.end();
-
-      let output = "";
-
-      for await (const chunk of probe.stdout) {
-        output += chunk;
-      }
-
-      const total = parseFloat(output);
-      startTime = Math.max(0, total + startTime);
-    }
-
-    res.setHeader("Content-Type", "audio/mpeg");
-
-    // 🔥 FFmpeg clip from buffer
-    const ffmpeg = spawn("ffmpeg", [
-      "-ss", startTime.toString(),
-      "-i", "pipe:0",
-      "-t", clipDuration.toString(),
-      "-f", "mp3",
-      "pipe:1"
-    ]);
-
-    ffmpeg.stdin.write(buffer);
-    ffmpeg.stdin.end();
-
-    ffmpeg.stdout.pipe(res);
-
-    ffmpeg.stderr.on("data", () => {});
-    ffmpeg.on("error", err => {
-      console.error("FFMPEG ERROR:", err);
-      res.sendStatus(500);
-    });
-
-  } catch (err) {
-    console.error("CLIP ERROR:", err);
-    res.status(500).send("Clip failed");
   }
 });
 
