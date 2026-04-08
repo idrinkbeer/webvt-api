@@ -143,6 +143,50 @@ app.get("/audio/song/:filename", async (req, res) => {
   }
 });
 
+app.get("/audio/clip", async (req, res) => {
+  const { file, start, duration } = req.query;
+
+  if (!file) return res.status(400).send("Missing file");
+
+  const filePath = path.join(AUDIO_DIR, file);
+
+  let startTime = parseFloat(start || 0);
+
+  if (startTime < 0) {
+    const { spawnSync } = require("child_process");
+  
+    const probe = spawnSync("ffprobe", [
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "default=noprint_wrappers=1:nokey=1",
+      filePath
+    ]);
+  
+    const total = parseFloat(probe.stdout.toString());
+    startTime = Math.max(0, total + startTime);
+  }
+  
+  const clipDuration = parseFloat(duration || 10);
+
+  res.setHeader("Content-Type", "audio/mpeg");
+
+  const ffmpeg = spawn("ffmpeg", [
+    "-ss", startTime.toString(),
+    "-i", filePath,
+    "-t", clipDuration.toString(),
+    "-f", "mp3",
+    "pipe:1"
+  ]);
+
+  ffmpeg.stdout.pipe(res);
+
+  ffmpeg.stderr.on("data", () => {});
+  ffmpeg.on("error", err => {
+    console.error(err);
+    res.sendStatus(500);
+  });
+});
+
 // =====================
 // TEST
 // =====================
