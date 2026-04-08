@@ -92,15 +92,18 @@ app.get("/logs", auth, async (req, res) => {
       path: "/LOGS"
     });
 
-    const files = response.result.entries
-      .filter(f => f.name.endsWith(".ASC"))
+    // 🔥 FIX: support both formats
+    const entries = response.result?.entries || response.entries;
+
+    const files = entries
+      .filter(f => f.name.toLowerCase().endsWith(".asc"))
       .map(f => f.name);
 
     res.json(files);
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Dropbox error" });
+    console.error("DROPBOX ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
