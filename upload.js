@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
+import NodeID3 from "node-id3";
 
 const router = express.Router();
 
@@ -14,6 +15,39 @@ const dbx = new Dropbox({
   refreshToken: process.env.DROPBOX_REFRESH_TOKEN,
   fetch
 });
+
+// 🎯 Extract metadata sent from frontend
+const { cart, secTone } = req.body;
+
+const tags = {
+  title: `VT ${cart}`,
+  artist: "VOICETRACK",
+  album: "Web VT",
+
+  userDefinedText: [
+    {
+      description: "Sec Tone",
+      value: secTone.toString()
+    },
+    {
+      description: "Category",
+      value: "AUDIO"
+    },
+    {
+      description: "No fade",
+      value: "0"
+    }
+  ]
+};
+
+// 🧠 Write tags WITHOUT corrupting MP3
+const success = NodeID3.write(tags, filePath);
+
+if (!success) {
+  console.error("❌ Failed to write ID3 tags");
+} else {
+  console.log("✅ ID3 tags written (Sec Tone:", secTone, ")");
+}
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
