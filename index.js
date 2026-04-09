@@ -9,7 +9,9 @@ import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
 
 const dbx = new Dropbox({
-  accessToken: process.env.DROPBOX_TOKEN,
+  clientId: process.env.DROPBOX_APP_KEY,
+  clientSecret: process.env.DROPBOX_APP_SECRET,
+  refreshToken: process.env.DROPBOX_REFRESH_TOKEN,
   fetch
 });
 
