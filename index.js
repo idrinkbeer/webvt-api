@@ -157,7 +157,7 @@ app.get("/played", async (req, res) => {
   try {
     const dropboxPath = "/AIR/PLAYED.txt";
 
-    const response = await dropbox.filesDownload({
+    const response = await dbx.filesDownload({
       path: dropboxPath
     });
 
