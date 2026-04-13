@@ -153,6 +153,23 @@ app.get("/audio/song/:filename", async (req, res) => {
   }
 });
 
+app.get("/played", async (req, res) => {
+  try {
+    const dropboxPath = "/AIR/PLAYED.txt";
+
+    const response = await dropbox.filesDownload({
+      path: dropboxPath
+    });
+
+    const fileData = response.result.fileBinary;
+
+    res.send(fileData.toString());
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Failed to load PLAYED.txt");
+  }
+});
+
 // =====================
 // TEST
 // =====================
