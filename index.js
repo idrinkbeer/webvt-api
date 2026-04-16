@@ -170,6 +170,29 @@ app.get("/played", async (req, res) => {
   }
 });
 
+
+app.get("/music", async (req, res) => {
+  const token = await getAccessToken();
+
+  const dbx = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ path: "/MUS" })
+  });
+
+  const data = await dbx.json();
+
+  const files = data.entries
+    .filter(f => f[".tag"] === "file")
+    .map(f => f.name); // 👈 important: match your existing system
+
+  res.json(files);
+});
+
+
 // =====================
 // TEST
 // =====================
