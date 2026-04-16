@@ -71,30 +71,47 @@ function auth(req, res, next) {
 }
 
 // ✅ Upload route (handles FTP)
-app.post("/upload", auth, upload.single("file"), async (req, res) => {
+app.post("/upload", auth, async (req, res) => {
   try {
-    const filePath = req.file.path;
+    const filename = req.headers["x-filename"];
+    const secTone = req.headers["x-sectone"] || "0";
+    const intro = req.headers["x-intro"] || "0";
 
-    const buffer = fs.readFileSync(filePath);
+    if (!filename) {
+      return res.status(400).send("Missing filename");
+    }
 
-    const secTone = req.body.secTone || "0";
-    const intro = req.body.intro || "0";
+    const chunks = [];
 
-    const tags = {
-      userDefinedText: [
-        { description: "Sec Tone", value: secTone.toString() },
-        { description: "Intro", value: intro.toString() }
-      ]
-    };
+    req.on("data", chunk => chunks.push(chunk));
 
-    const taggedBuffer = NodeID3.write(tags, buffer);
+    req.on("end", async () => {
+      try {
+        let buffer = Buffer.concat(chunks);
 
-    // 🔥 overwrite file with tagged version
-    fs.writeFileSync(filePath, taggedBuffer);
+        // 🔥 WRITE ID3 TAGS
+        const tags = {
+          userDefinedText: [
+            { description: "Sec Tone", value: secTone.toString() },
+            { description: "Intro", value: intro.toString() }
+          ]
+        };
 
-    // 👉 continue your existing FTP upload logic here
+        const taggedBuffer = NodeID3.write(tags, buffer);
 
-    res.json({ success: true });
+        // 🔥 SAVE TEMP FILE
+        const filePath = `uploads/${filename}`;
+        fs.writeFileSync(filePath, taggedBuffer);
+
+        // 👉 your existing FTP / Dropbox upload logic here
+
+        res.json({ success: true });
+
+      } catch (err) {
+        console.error(err);
+        res.status(500).send("Processing failed");
+      }
+    });
 
   } catch (err) {
     console.error(err);
