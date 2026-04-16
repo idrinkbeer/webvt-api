@@ -18,8 +18,12 @@ const dbx = new Dropbox({
 const app = express();
 app.use(cors({
   origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+// 🔥 IMPORTANT: handle preflight
+app.options("*", cors());
 
 const PORT = process.env.PORT;
 
@@ -171,25 +175,24 @@ app.get("/played", async (req, res) => {
 });
 
 
-app.get("/music", async (req, res) => {
-  const token = await getAccessToken();
+app.get("/music", auth, async (req, res) => {
+  try {
+    const response = await dbx.filesListFolder({
+      path: "/MUS"
+    });
 
-  const dbx = await fetch("https://api.dropboxapi.com/2/files/list_folder", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ path: "/MUS" })
-  });
+    const entries = response.result?.entries || response.entries;
 
-  const data = await dbx.json();
+    const files = entries
+      .filter(f => f[".tag"] === "file")
+      .map(f => f.name);
 
-  const files = data.entries
-    .filter(f => f[".tag"] === "file")
-    .map(f => f.name); // 👈 important: match your existing system
+    res.json(files);
 
-  res.json(files);
+  } catch (err) {
+    console.error("MUSIC ERROR:", err);
+    res.status(500).json({ error: "Failed to load music" });
+  }
 });
 
 
