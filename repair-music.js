@@ -31,7 +31,21 @@ async function repairMusic() {
         path: `/MUS/${file.name}`
       });
 
-      let buffer = Buffer.from(download.result.fileBinary);
+      let fileData = download.result.fileBinary;
+
+// 🔥 ensure proper buffer conversion
+let buffer;
+
+if (fileData instanceof Buffer) {
+  buffer = fileData;
+} else if (fileData instanceof ArrayBuffer) {
+  buffer = Buffer.from(new Uint8Array(fileData));
+} else if (typeof fileData === "string") {
+  buffer = Buffer.from(fileData, "binary");
+} else {
+  // fallback (covers weird cases)
+  buffer = Buffer.from(fileData);
+}
 
       // 2️⃣ Read existing tags (try to preserve values)
       const existing = NodeID3.read(buffer);
