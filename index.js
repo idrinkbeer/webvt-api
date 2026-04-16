@@ -8,8 +8,6 @@ import bcrypt from "bcryptjs";
 import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
 
-import fs from "fs";
-
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads", { recursive: true });
 }
