@@ -195,6 +195,48 @@ app.get("/music", auth, async (req, res) => {
   }
 });
 
+import NodeID3 from "node-id3";
+
+// =====================
+// 🎯 SAVE SEC TONE TO MP3
+// =====================
+app.post("/sectone", auth, express.json(), async (req, res) => {
+  try {
+    const { filename, secTone } = req.body;
+
+    const path = `/MUS/${filename}`;
+
+    // 1️⃣ DOWNLOAD FILE
+    const response = await dbx.filesDownload({ path });
+    const buffer = Buffer.from(response.result.fileBinary);
+
+    // 2️⃣ ADD ID3 TAG
+    const tags = {
+      userDefinedText: [{
+        description: "Sec Tone",
+        value: secTone.toString()
+      }]
+    };
+
+    const taggedBuffer = NodeID3.write(tags, buffer);
+
+    // 3️⃣ UPLOAD BACK TO DROPBOX (overwrite)
+    await dbx.filesUpload({
+      path,
+      contents: taggedBuffer,
+      mode: { ".tag": "overwrite" }
+    });
+
+    console.log("✅ Sec Tone written to MP3:", filename);
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error("SECTONE ERROR:", err);
+    res.status(500).json({ error: "Failed to write sec tone" });
+  }
+});
+
 
 // =====================
 // TEST
