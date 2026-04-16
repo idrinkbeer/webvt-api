@@ -202,7 +202,7 @@ import NodeID3 from "node-id3";
 // =====================
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, secTone } = req.body;
+    const { filename, secTone, intro} = req.body;
 
     const path = `/MUS/${filename}`;
 
@@ -211,12 +211,18 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
     const buffer = Buffer.from(response.result.fileBinary);
 
     // 2️⃣ ADD ID3 TAG
-    const tags = {
-      userDefinedText: [{
-        description: "Sec Tone",
-        value: secTone.toString()
-      }]
-    };
+const tags = {
+  userDefinedText: [
+    {
+      description: "Sec Tone",
+      value: secTone.toString()
+    },
+    {
+      description: "Intro",
+      value: intro.toString()
+    }
+  ]
+};
 
     const taggedBuffer = NodeID3.write(tags, buffer);
 
