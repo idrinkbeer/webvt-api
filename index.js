@@ -109,12 +109,17 @@ const intro = parseFloat(req.headers["x-intro"] || "0");
         const taggedBuffer = NodeID3.write(tags, buffer);
 
         // 🔥 SAVE TEMP FILE
-        const filePath = `uploads/${filename}`;
-        fs.writeFileSync(filePath, taggedBuffer);
+const filePath = `uploads/${filename}`;
+fs.writeFileSync(filePath, taggedBuffer);
 
-        // 👉 your existing FTP / Dropbox upload logic here
+// 🔥 SEND TO DROPBOX
+await dbx.filesUpload({
+  path: `/VTX/${filename}`, // or /MUS if you want
+  contents: taggedBuffer,
+  mode: { ".tag": "overwrite" }
+});
 
-        res.json({ success: true });
+res.json({ success: true });
 
       } catch (err) {
         console.error(err);
