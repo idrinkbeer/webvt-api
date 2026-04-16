@@ -71,14 +71,36 @@ function auth(req, res, next) {
 }
 
 // ✅ Upload route (handles FTP)
-app.use("/upload", auth, uploadRoute);
+app.post("/upload", auth, upload.single("file"), async (req, res) => {
+  try {
+    const filePath = req.file.path;
 
-const ftpConfig = {
-  host: process.env.FTP_HOST,
-  user: process.env.FTP_USER,
-  password: process.env.FTP_PASS,
-  secure: false
-};
+    const buffer = fs.readFileSync(filePath);
+
+    const secTone = req.body.secTone || "0";
+    const intro = req.body.intro || "0";
+
+    const tags = {
+      userDefinedText: [
+        { description: "Sec Tone", value: secTone.toString() },
+        { description: "Intro", value: intro.toString() }
+      ]
+    };
+
+    const taggedBuffer = NodeID3.write(tags, buffer);
+
+    // 🔥 overwrite file with tagged version
+    fs.writeFileSync(filePath, taggedBuffer);
+
+    // 👉 continue your existing FTP upload logic here
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Upload failed");
+  }
+});
 
 const uploadDir = process.env.UPLOAD_DIR || "/uploads";
 
