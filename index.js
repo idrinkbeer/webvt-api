@@ -254,7 +254,7 @@ app.get("/music", auth, async (req, res) => {
     // 3️⃣ filter files
     const files = allFiles
       .filter(f => f[".tag"] === "file" && f.name)
-      .map(f => f.name);
+      .map(f => f.name)
       .sort((a, b) => a.localeCompare(b));
 
     res.json(files);
