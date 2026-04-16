@@ -1,4 +1,3 @@
-
 import express from "express";
 import fs from "fs";
 import cors from "cors";
@@ -80,8 +79,8 @@ function auth(req, res, next) {
 app.post("/upload", auth, async (req, res) => {
   try {
     const filename = req.headers["x-filename"];
-    const secTone = req.headers["x-sectone"] || "0";
-    const intro = req.headers["x-intro"] || "0";
+const secTone = parseFloat(req.headers["x-sectone"] || "0");
+const intro = parseFloat(req.headers["x-intro"] || "0");
 
     if (!filename) {
       return res.status(400).send("Missing filename");
