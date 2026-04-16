@@ -8,6 +8,12 @@ import bcrypt from "bcryptjs";
 import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
 
+import fs from "fs";
+
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads", { recursive: true });
+}
+
 const dbx = new Dropbox({
   clientId: process.env.DROPBOX_APP_KEY,
   clientSecret: process.env.DROPBOX_APP_SECRET,
