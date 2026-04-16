@@ -1,3 +1,4 @@
+
 import express from "express";
 import fs from "fs";
 import cors from "cors";
@@ -216,13 +217,26 @@ app.get("/played", async (req, res) => {
 
 app.get("/music", auth, async (req, res) => {
   try {
-    const response = await dbx.filesListFolder({
+    let allFiles = [];
+
+    // 1️⃣ first call
+    let response = await dbx.filesListFolder({
       path: "/MUS"
     });
 
-    const entries = response.result?.entries || response.entries || [];
+    allFiles.push(...(response.result.entries || []));
 
-    const files = entries
+    // 2️⃣ keep fetching if more
+    while (response.result.has_more) {
+      response = await dbx.filesListFolderContinue({
+        cursor: response.result.cursor
+      });
+
+      allFiles.push(...(response.result.entries || []));
+    }
+
+    // 3️⃣ filter files
+    const files = allFiles
       .filter(f => f[".tag"] === "file" && f.name)
       .map(f => f.name);
 
