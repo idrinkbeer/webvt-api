@@ -26,26 +26,19 @@ async function repairMusic() {
     try {
       console.log(`\n🎵 Fixing: ${file.name}`);
 
-      // 1️⃣ Download
-      const download = await dbx.filesDownload({
-        path: `/MUS/${file.name}`
-      });
+// 1️⃣ Get temporary download link
+const linkRes = await dbx.filesGetTemporaryLink({
+  path: `/MUS/${file.name}`
+});
 
-      let fileData = download.result.fileBinary;
+const tempLink = linkRes.result.link;
 
-// 🔥 ensure proper buffer conversion
-let buffer;
+// 2️⃣ Fetch real binary
+const response = await fetch(tempLink);
+const arrayBuffer = await response.arrayBuffer();
 
-if (fileData instanceof Buffer) {
-  buffer = fileData;
-} else if (fileData instanceof ArrayBuffer) {
-  buffer = Buffer.from(new Uint8Array(fileData));
-} else if (typeof fileData === "string") {
-  buffer = Buffer.from(fileData, "binary");
-} else {
-  // fallback (covers weird cases)
-  buffer = Buffer.from(fileData);
-}
+// 3️⃣ Convert to true Buffer
+let buffer = Buffer.from(arrayBuffer);
 
       // 2️⃣ Read existing tags (try to preserve values)
       const existing = NodeID3.read(buffer);
