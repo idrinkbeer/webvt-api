@@ -181,10 +181,10 @@ app.get("/music", auth, async (req, res) => {
       path: "/MUS"
     });
 
-    const entries = response.result?.entries || response.entries;
+    const entries = response.result?.entries || response.entries || [];
 
     const files = entries
-      .filter(f => f[".tag"] === "file")
+      .filter(f => f[".tag"] === "file" && f.name)
       .map(f => f.name);
 
     res.json(files);
