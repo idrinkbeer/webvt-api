@@ -99,12 +99,15 @@ const intro = parseFloat(req.headers["x-intro"] || "0");
         let buffer = Buffer.concat(chunks);
 
         // 🔥 WRITE ID3 TAGS
-        const tags = {
-          userDefinedText: [
-            { description: "Sec Tone", value: secTone.toString() },
-            { description: "Intro", value: intro.toString() }
-          ]
-        };
+const tags = {
+  title: "VO TRACK",
+  artist: "JOCK",
+
+  userDefinedText: [
+    { description: "Sec Tone", value: secTone.toString() },
+    { description: "Intro", value: intro.toString() }
+  ]
+};
 
         const taggedBuffer = NodeID3.write(tags, buffer);
 
