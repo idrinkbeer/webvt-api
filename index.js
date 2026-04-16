@@ -244,6 +244,39 @@ const tags = {
 });
 
 
+
+app.get("/music/meta/:filename", auth, async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    const path = `/MUS/${filename}`;
+
+    const response = await dbx.filesDownload({ path });
+    const buffer = Buffer.from(response.result.fileBinary);
+
+    const tags = NodeID3.read(buffer);
+
+    let secTone = 0;
+    let intro = 0;
+
+    if (tags.userDefinedText) {
+      tags.userDefinedText.forEach(t => {
+        if (t.description === "Sec Tone") {
+          secTone = parseFloat(t.value) || 0;
+        }
+        if (t.description === "Intro") {
+          intro = parseFloat(t.value) || 0;
+        }
+      });
+    }
+
+    res.json({ secTone, intro });
+
+  } catch (err) {
+    console.error("META ERROR:", err);
+    res.json({ secTone: 0, intro: 0 });
+  }
+});
+
 // =====================
 // TEST
 // =====================
