@@ -4,6 +4,7 @@ import cors from "cors";
 import uploadRoute from "./upload.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import NodeID3 from "node-id3";
 
 import { Dropbox } from "dropbox";
 import fetch from "node-fetch";
@@ -79,12 +80,11 @@ function auth(req, res, next) {
   }
 }
 
-// ✅ Upload route (handles FTP)
 app.post("/upload", auth, async (req, res) => {
   try {
     const filename = req.headers["x-filename"];
-const secTone = parseFloat(req.headers["x-sectone"] || "0");
-const intro = parseFloat(req.headers["x-intro"] || "0");
+    const secTone = parseFloat(req.headers["x-sectone"] || "0");
+    const intro = parseFloat(req.headers["x-intro"] || "0");
 
     if (!filename) {
       return res.status(400).send("Missing filename");
@@ -98,31 +98,46 @@ const intro = parseFloat(req.headers["x-intro"] || "0");
       try {
         let buffer = Buffer.concat(chunks);
 
-        // 🔥 WRITE ID3 TAGS
-const tags = {
-  title: "VO TRACK",
-  artist: "JOCK",
+        // ✅ BUILD AIR STRING
+        const zeroPad = (n, s) => String(Math.floor(n)).padStart(s, "0");
 
-  userDefinedText: [
-    { description: "Sec Tone", value: secTone.toString() },
-    { description: "Intro", value: intro.toString() }
-  ]
-};
+        const ctAUDs = 0;
+        const ctINT  = intro * 1000;
+        const ctSEG  = secTone * 1000;
 
-        const taggedBuffer = NodeID3.write(tags, buffer);
+        // ⚠️ For VTs we don’t know duration easily → use secTone or fallback
+        const ctAUDe = ctSEG || 0;
 
-        // 🔥 SAVE TEMP FILE
-const filePath = `uploads/${filename}`;
-fs.writeFileSync(filePath, taggedBuffer);
+        let air = "AIR#"
+          + zeroPad(ctAUDs / 100, 6)
+          + zeroPad(ctSEG / 100, 6)
+          + zeroPad(ctAUDe / 100, 6)
+          + zeroPad(((ctINT - ctAUDs) / 100) % 1000, 3);
 
-// 🔥 SEND TO DROPBOX
-await dbx.filesUpload({
-  path: `/VTX/${filename}`, // or /MUS if you want
-  contents: taggedBuffer,
-  mode: { ".tag": "overwrite" }
-});
+        // pad rest (required for AIR systems)
+        air += "000000000000000000000000"; // dates
+        air += "F000000000000000000000000000000000000000000000000000000000000000000000000";
 
-res.json({ success: true });
+        // ✅ WRITE ONLY AIR TAG (NO CUSTOM TAGS)
+        const taggedBuffer = NodeID3.write({
+          title: "VO TRACK",
+          artist: "JOCK",
+          encodedBy: air
+        }, buffer);
+
+        // optional local save
+        fs.writeFileSync(`uploads/${filename}`, taggedBuffer);
+
+        // ✅ UPLOAD TO DROPBOX
+        await dbx.filesUpload({
+          path: `/VTX/${filename}`,
+          contents: taggedBuffer,
+          mode: { ".tag": "overwrite" }
+        });
+
+        console.log("✅ VT uploaded with AIR:", filename);
+
+        res.json({ success: true });
 
       } catch (err) {
         console.error(err);
@@ -265,64 +280,57 @@ app.get("/music", auth, async (req, res) => {
   }
 });
 
-import NodeID3 from "node-id3";
-
 // =====================
 // 🎯 SAVE SEC TONE TO MP3
 // =====================
-const NodeID3 = require("node-id3");
-const path = require("path");
 
-app.post("/sectone", async (req, res) => {
-  const { filename, air } = req.body;
 
-  const filePath = path.join(MUSIC_DIR, filename);
+import path from "path";
 
+app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    NodeID3.update(
-      {
-        encodedBy: air // 👈 THIS IS THE KEY
-      },
-      filePath
+    const { filename, air } = req.body;
+
+    const download = await dbx.filesDownload({
+      path: `/MUS/${filename}`
+    });
+
+    const buffer = download.result.fileBinary;
+
+    const taggedBuffer = NodeID3.update(
+      { encodedBy: air },
+      buffer
     );
+
+    await dbx.filesUpload({
+      path: `/MUS/${filename}`,
+      contents: taggedBuffer,
+      mode: { ".tag": "overwrite" }
+    });
+
+    console.log("✅ AIR tag written:", filename);
 
     res.json({ success: true });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Tag write failed" });
+    res.status(500).json({ error: "Failed to write AIR tag" });
   }
 });
 
-    const taggedBuffer = NodeID3.write(tags, buffer);
 
-    // 3️⃣ UPLOAD BACK TO DROPBOX (overwrite)
-    await dbx.filesUpload({
-      path,
-      contents: taggedBuffer,
-      mode: { ".tag": "overwrite" }
+
+app.get("/music/tag/:filename", auth, async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+
+    const download = await dbx.filesDownload({
+      path: `/MUS/${filename}`
     });
 
-    console.log("✅ Sec Tone written to MP3:", filename);
+    const buffer = download.result.fileBinary;
 
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error("SECTONE ERROR:", err);
-    res.status(500).json({ error: "Failed to write sec tone" });
-  }
-});
-
-
-
-const NodeID3 = require("node-id3");
-const path = require("path");
-
-app.get("/music/tag/:filename", (req, res) => {
-  const filePath = path.join(MUSIC_DIR, req.params.filename);
-
-  try {
-    const tags = NodeID3.read(filePath);
+    const tags = NodeID3.read(buffer);
 
     res.json({
       air: tags.encodedBy || null
