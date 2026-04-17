@@ -342,37 +342,6 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
   }
 });
 
-
-// =====================
-// 💾 SAVE LOG TO DROPBOX
-// =====================
-app.post("/logs/:filename", auth, express.text({ type: "*/*" }), async (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const content = req.body;
-
-    if (!content) {
-      return res.status(400).json({ error: "Empty log content" });
-    }
-
-    const dropboxPath = `/LOGS/${filename}`;
-
-    await dbx.filesUpload({
-      path: dropboxPath,
-      contents: content,
-      mode: { ".tag": "overwrite" }
-    });
-
-    console.log("✅ LOG SAVED:", dropboxPath);
-    console.log("📏 Size:", content.length);
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error("❌ LOG SAVE FAILED:", err);
-    res.status(500).json({ error: "Failed to save log" });
-  }
-});
 // =====================
 // TEST
 // =====================
