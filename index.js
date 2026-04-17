@@ -270,29 +270,29 @@ import NodeID3 from "node-id3";
 // =====================
 // 🎯 SAVE SEC TONE TO MP3
 // =====================
-app.post("/sectone", auth, express.json(), async (req, res) => {
+const NodeID3 = require("node-id3");
+const path = require("path");
+
+app.post("/sectone", async (req, res) => {
+  const { filename, air } = req.body;
+
+  const filePath = path.join(MUSIC_DIR, filename);
+
   try {
-    const { filename, secTone, intro} = req.body;
+    NodeID3.update(
+      {
+        encodedBy: air // 👈 THIS IS THE KEY
+      },
+      filePath
+    );
 
-    const path = `/MUS/${filename}`;
+    res.json({ success: true });
 
-    // 1️⃣ DOWNLOAD FILE
-    const response = await dbx.filesDownload({ path });
-    const buffer = Buffer.from(response.result.fileBinary);
-
-    // 2️⃣ ADD ID3 TAG
-const tags = {
-  userDefinedText: [
-    {
-      description: "Sec Tone",
-      value: secTone.toString()
-    },
-    {
-      description: "Intro",
-      value: intro.toString()
-    }
-  ]
-};
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Tag write failed" });
+  }
+});
 
     const taggedBuffer = NodeID3.write(tags, buffer);
 
@@ -315,35 +315,22 @@ const tags = {
 
 
 
-app.get("/music/meta/:filename", auth, async (req, res) => {
+const NodeID3 = require("node-id3");
+const path = require("path");
+
+app.get("/music/tag/:filename", (req, res) => {
+  const filePath = path.join(MUSIC_DIR, req.params.filename);
+
   try {
-    const filename = decodeURIComponent(req.params.filename);
-    const path = `/MUS/${filename}`;
+    const tags = NodeID3.read(filePath);
 
-    const response = await dbx.filesDownload({ path });
-    const buffer = Buffer.from(response.result.fileBinary);
-
-    const tags = NodeID3.read(buffer);
-
-    let secTone = 0;
-    let intro = 0;
-
-    if (tags.userDefinedText) {
-      tags.userDefinedText.forEach(t => {
-        if (t.description === "Sec Tone") {
-          secTone = parseFloat(t.value) || 0;
-        }
-        if (t.description === "Intro") {
-          intro = parseFloat(t.value) || 0;
-        }
-      });
-    }
-
-    res.json({ secTone, intro });
+    res.json({
+      air: tags.encodedBy || null
+    });
 
   } catch (err) {
-    console.error("META ERROR:", err);
-    res.json({ secTone: 0, intro: 0 });
+    console.error(err);
+    res.json({ air: null });
   }
 });
 
