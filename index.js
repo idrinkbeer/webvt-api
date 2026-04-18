@@ -328,7 +328,7 @@ let tags = {};
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", name);
+  console.log("⚠️ Bad tag:", filename);
 }
 
 try {
