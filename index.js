@@ -228,6 +228,23 @@ app.get("/audio/song/:filename", async (req, res) => {
   }
 });
 
+app.get("/audio/sweeper/:filename", async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename).trim();
+
+    const response = await dbx.filesDownload({
+      path: `/SWP/${filename}`
+    });
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(response.result.fileBinary);
+
+  } catch (err) {
+    console.error("SWEEPER ERROR:", err);
+    res.status(404).send("Sweeper not found");
+  }
+});
+
 app.get("/played", async (req, res) => {
   try {
     const dropboxPath = "/AIR/PLAYED.txt";
@@ -246,37 +263,45 @@ app.get("/played", async (req, res) => {
 });
 
 
-app.get("/music", auth, async (req, res) => {
+const LIBRARY_FOLDERS = {
+  music: "/MUS",
+  sweepers: "/SWP"
+};
+
+app.get("/library", auth, async (req, res) => {
   try {
-    let allFiles = [];
+    const type = req.query.type;
 
-    // 1️⃣ first call
-    let response = await dbx.filesListFolder({
-      path: "/MUS"
-    });
+    // 🔹 If requesting ONE category
+    if (type) {
+      const folder = LIBRARY_FOLDERS[type];
 
-    allFiles.push(...(response.result.entries || []));
+      if (!folder) {
+        return res.status(400).json({ error: "Invalid type" });
+      }
 
-    // 2️⃣ keep fetching if more
-    while (response.result.has_more) {
-      response = await dbx.filesListFolderContinue({
-        cursor: response.result.cursor
+      const files = await listDropboxFolder(folder);
+
+      return res.json({
+        type,
+        items: files
       });
-
-      allFiles.push(...(response.result.entries || []));
     }
 
-    // 3️⃣ filter files
-    const files = allFiles
-      .filter(f => f[".tag"] === "file" && f.name)
-      .map(f => f.name)
-      .sort((a, b) => a.localeCompare(b));
+    // 🔹 If requesting ALL categories (better UX)
+    const [music, sweepers] = await Promise.all([
+      listDropboxFolder(LIBRARY_FOLDERS.music),
+      listDropboxFolder(LIBRARY_FOLDERS.sweepers)
+    ]);
 
-    res.json(files);
+    res.json({
+      music,
+      sweepers
+    });
 
   } catch (err) {
-    console.error("MUSIC ERROR:", err);
-    res.status(500).json({ error: "Failed to load music" });
+    console.error("LIBRARY ERROR:", err);
+    res.status(500).json({ error: "Failed to load library" });
   }
 });
 
@@ -341,6 +366,29 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
     res.json({ air: null });
   }
 });
+
+async function listDropboxFolder(folderPath) {
+  let allFiles = [];
+
+  let response = await dbx.filesListFolder({
+    path: folderPath
+  });
+
+  allFiles.push(...(response.result.entries || []));
+
+  while (response.result.has_more) {
+    response = await dbx.filesListFolderContinue({
+      cursor: response.result.cursor
+    });
+
+    allFiles.push(...(response.result.entries || []));
+  }
+
+  return allFiles
+    .filter(f => f[".tag"] === "file" && f.name)
+    .map(f => f.name)
+    .sort((a, b) => a.localeCompare(b));
+}
 
 // =====================
 // TEST
