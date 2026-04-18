@@ -339,7 +339,7 @@ import path from "path";
 
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, air, type } = req.body;
+    const { filename, air, type, artist, title } = req.body;
 
     const folder = LIBRARY_FOLDERS[type || "music"];
 
@@ -349,10 +349,14 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
     const buffer = download.result.fileBinary;
 
-    const taggedBuffer = NodeID3.update(
-      { encodedBy: air },
-      buffer
-    );
+const taggedBuffer = NodeID3.update(
+  {
+    title: title || "",
+    artist: artist || "",
+    encodedBy: air // keep AIR here
+  },
+  buffer
+);
 
     await dbx.filesUpload({
       path: `${folder}/${filename}`, // ✅ FIXED
@@ -385,9 +389,11 @@ app.get("/tag/:type/:filename", auth, async (req, res) => {
     const buffer = download.result.fileBinary;
     const tags = NodeID3.read(buffer);
 
-    res.json({
-      air: tags.encodedBy || null
-    });
+res.json({
+  air: tags.encodedBy || null,
+  artist: tags.artist || "",
+  title: tags.title || ""
+});
 
   } catch (err) {
     console.error(err);
