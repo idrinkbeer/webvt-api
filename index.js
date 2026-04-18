@@ -80,6 +80,36 @@ function auth(req, res, next) {
   }
 }
 
+
+const LIBRARY_FOLDERS = {
+  music: "/MUS",
+  sweepers: "/SWP"
+};
+
+async function listFolder(folderPath) {
+  let allFiles = [];
+
+  let response = await dbx.filesListFolder({
+    path: folderPath
+  });
+
+  allFiles.push(...(response.result.entries || []));
+
+  while (response.result.has_more) {
+    response = await dbx.filesListFolderContinue({
+      cursor: response.result.cursor
+    });
+
+    allFiles.push(...(response.result.entries || []));
+  }
+
+  return allFiles
+    .filter(f => f[".tag"] === "file" && f.name)
+    .map(f => f.name)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+
 app.post("/upload", auth, async (req, res) => {
   try {
     const filename = req.headers["x-filename"];
@@ -263,16 +293,11 @@ app.get("/played", async (req, res) => {
 });
 
 
-const LIBRARY_FOLDERS = {
-  music: "/MUS",
-  sweepers: "/SWP"
-};
-
 app.get("/library", auth, async (req, res) => {
   try {
     const type = req.query.type;
 
-    // 🔹 If requesting ONE category
+    // 👉 If requesting ONE category
     if (type) {
       const folder = LIBRARY_FOLDERS[type];
 
@@ -280,7 +305,7 @@ app.get("/library", auth, async (req, res) => {
         return res.status(400).json({ error: "Invalid type" });
       }
 
-      const files = await listDropboxFolder(folder);
+      const files = await listFolder(folder);
 
       return res.json({
         type,
@@ -288,10 +313,10 @@ app.get("/library", auth, async (req, res) => {
       });
     }
 
-    // 🔹 If requesting ALL categories (better UX)
+    // 👉 If requesting BOTH (recommended)
     const [music, sweepers] = await Promise.all([
-      listDropboxFolder(LIBRARY_FOLDERS.music),
-      listDropboxFolder(LIBRARY_FOLDERS.sweepers)
+      listFolder(LIBRARY_FOLDERS.music),
+      listFolder(LIBRARY_FOLDERS.sweepers)
     ]);
 
     res.json({
@@ -314,10 +339,12 @@ import path from "path";
 
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, air } = req.body;
+    const { filename, air, type } = req.body;
+
+    const folder = LIBRARY_FOLDERS[type || "music"];
 
     const download = await dbx.filesDownload({
-      path: `/MUS/${filename}`
+      path: `${folder}/${filename}`
     });
 
     const buffer = download.result.fileBinary;
@@ -328,12 +355,12 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
     );
 
     await dbx.filesUpload({
-      path: `/MUS/${filename}`,
+      path: `${folder}/${filename}`, // ✅ FIXED
       contents: taggedBuffer,
       mode: { ".tag": "overwrite" }
     });
 
-    console.log("✅ AIR tag written:", filename);
+    console.log(`✅ AIR tag written (${type || "music"}):`, filename);
 
     res.json({ success: true });
 
@@ -345,16 +372,17 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
 
 
-app.get("/music/tag/:filename", auth, async (req, res) => {
+app.get("/tag/:type/:filename", auth, async (req, res) => {
   try {
-    const filename = decodeURIComponent(req.params.filename);
+    const { type, filename } = req.params;
+
+    const folder = LIBRARY_FOLDERS[type] || "/MUS";
 
     const download = await dbx.filesDownload({
-      path: `/MUS/${filename}`
+      path: `${folder}/${decodeURIComponent(filename)}`
     });
 
     const buffer = download.result.fileBinary;
-
     const tags = NodeID3.read(buffer);
 
     res.json({
@@ -367,28 +395,6 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
   }
 });
 
-async function listDropboxFolder(folderPath) {
-  let allFiles = [];
-
-  let response = await dbx.filesListFolder({
-    path: folderPath
-  });
-
-  allFiles.push(...(response.result.entries || []));
-
-  while (response.result.has_more) {
-    response = await dbx.filesListFolderContinue({
-      cursor: response.result.cursor
-    });
-
-    allFiles.push(...(response.result.entries || []));
-  }
-
-  return allFiles
-    .filter(f => f[".tag"] === "file" && f.name)
-    .map(f => f.name)
-    .sort((a, b) => a.localeCompare(b));
-}
 
 // =====================
 // TEST
