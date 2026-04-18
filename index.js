@@ -297,7 +297,43 @@ app.get("/library", auth, async (req, res) => {
   try {
     const type = req.query.type;
 
-    // 👉 If requesting ONE category
+    // 👉 helper to process a folder
+    const processFolder = async (folder, typeName) => {
+      const files = await listFolder(folder);
+
+      const results = await Promise.all(
+        files.map(async (name) => {
+          try {
+            const download = await dbx.filesDownload({
+              path: `${folder}/${name}`
+            });
+
+            const buffer = download.result.fileBinary;
+            const tags = NodeID3.read(buffer);
+
+            return {
+              name,
+              artist: tags.artist || "",
+              title: tags.title || "",
+              type: typeName
+            };
+
+          } catch (err) {
+            console.error("TAG ERROR:", name);
+            return {
+              name,
+              artist: "",
+              title: "",
+              type: typeName
+            };
+          }
+        })
+      );
+
+      return results;
+    };
+
+    // 👉 ONE TYPE
     if (type) {
       const folder = LIBRARY_FOLDERS[type];
 
@@ -305,18 +341,15 @@ app.get("/library", auth, async (req, res) => {
         return res.status(400).json({ error: "Invalid type" });
       }
 
-      const files = await listFolder(folder);
+      const items = await processFolder(folder, type);
 
-      return res.json({
-        type,
-        items: files
-      });
+      return res.json({ items });
     }
 
-    // 👉 If requesting BOTH (recommended)
+    // 👉 BOTH TYPES
     const [music, sweepers] = await Promise.all([
-      listFolder(LIBRARY_FOLDERS.music),
-      listFolder(LIBRARY_FOLDERS.sweepers)
+      processFolder(LIBRARY_FOLDERS.music, "music"),
+      processFolder(LIBRARY_FOLDERS.sweepers, "sweepers")
     ]);
 
     res.json({
@@ -401,6 +434,31 @@ res.json({
   }
 });
 
+
+async function getFileWithTags(folder, file) {
+  try {
+    const download = await dbx.filesDownload({
+      path: `${folder}/${file.name}`
+    });
+
+    const buffer = download.result.fileBinary;
+    const tags = NodeID3.read(buffer);
+
+    return {
+      name: file.name,
+      artist: tags.artist || "",
+      title: tags.title || ""
+    };
+
+  } catch (err) {
+    console.error("TAG READ ERROR:", file.name);
+    return {
+      name: file.name,
+      artist: "",
+      title: ""
+    };
+  }
+}
 
 // =====================
 // TEST
