@@ -250,7 +250,7 @@ app.get("/audio/song/:filename", async (req, res) => {
     const fileBinary = response.result.fileBinary;
 
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(fileBinary);
+    res.send(Buffer.from(fileBinary));
 
   } catch (err) {
     console.error("SONG ERROR:", err);
@@ -328,13 +328,7 @@ let tags = {};
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", filename);
-}
-
-try {
-  tags = NodeID3.read(buffer);
-} catch (e) {
-  console.log("⚠️ Bad tag:", filename);
+  console.log("⚠️ Bad tag:", name);
 }
 
             return {
@@ -451,7 +445,7 @@ app.get("/tag/:type/:filename", auth, async (req, res) => {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", filename);
+  console.log("⚠️ Bad tag:", name);
 }
 
 res.json({
@@ -479,7 +473,7 @@ async function getFileWithTags(folder, file) {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", filename);
+  console.log("⚠️ Bad tag:", name);
 }
 
     return {
