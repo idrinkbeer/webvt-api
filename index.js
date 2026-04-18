@@ -23,6 +23,7 @@ const dbx = new Dropbox({
 const app = express();
 app.use(cors({
   origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
     "Authorization",
@@ -32,7 +33,6 @@ app.use(cors({
   ]
 }));
 
-// 🔥 IMPORTANT: handle preflight
 app.options("*", cors());
 
 const PORT = process.env.PORT;
@@ -267,7 +267,7 @@ app.get("/audio/sweeper/:filename", async (req, res) => {
     });
 
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(response.result.fileBinary);
+    res.send(Buffer.from(response.result.fileBinary));
 
   } catch (err) {
     console.error("SWEEPER ERROR:", err);
@@ -283,9 +283,10 @@ app.get("/played", async (req, res) => {
       path: dropboxPath
     });
 
-    const fileData = response.result.fileBinary;
+const fileData = Buffer.from(response.result.fileBinary);
 
-    res.send(fileData.toString());
+res.setHeader("Content-Type", "text/plain");
+res.send(fileData.toString("utf-8"));
   } catch (err) {
     console.error(err);
     res.status(500).send("Failed to load PLAYED.txt");
@@ -308,13 +309,32 @@ app.get("/library", auth, async (req, res) => {
               path: `${folder}/${name}`
             });
 
-            const buffer = Buffer.from(download.result.fileBinary);
-            let tags = {};
+let buffer;
+
+try {
+  buffer = Buffer.from(download.result.fileBinary);
+} catch (e) {
+  console.log("⚠️ Buffer failed:", name);
+  return {
+    name,
+    artist: "",
+    title: "",
+    type: typeName
+  };
+}
+
+let tags = {};
 
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
   console.log("⚠️ Bad tag:", name);
+}
+
+try {
+  tags = NodeID3.read(buffer);
+} catch (e) {
+  console.log("⚠️ Bad tag:", filename);
 }
 
             return {
@@ -431,7 +451,7 @@ app.get("/tag/:type/:filename", auth, async (req, res) => {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", name);
+  console.log("⚠️ Bad tag:", filename);
 }
 
 res.json({
@@ -459,7 +479,7 @@ async function getFileWithTags(folder, file) {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", name);
+  console.log("⚠️ Bad tag:", filename);
 }
 
     return {
