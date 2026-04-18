@@ -308,8 +308,14 @@ app.get("/library", auth, async (req, res) => {
               path: `${folder}/${name}`
             });
 
-            const buffer = download.result.fileBinary;
-            const tags = NodeID3.read(buffer);
+            const buffer = Buffer.from(download.result.fileBinary);
+            let tags = {};
+
+try {
+  tags = NodeID3.read(buffer);
+} catch (e) {
+  console.log("⚠️ Bad tag:", name);
+}
 
             return {
               name,
@@ -380,7 +386,7 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
       path: `${folder}/${filename}`
     });
 
-    const buffer = download.result.fileBinary;
+    const buffer = Buffer.from(download.result.fileBinary);
 
 const taggedBuffer = NodeID3.update(
   {
@@ -419,8 +425,14 @@ app.get("/tag/:type/:filename", auth, async (req, res) => {
       path: `${folder}/${decodeURIComponent(filename)}`
     });
 
-    const buffer = download.result.fileBinary;
-    const tags = NodeID3.read(buffer);
+    const buffer = Buffer.from(download.result.fileBinary);
+    let tags = {};
+
+try {
+  tags = NodeID3.read(buffer);
+} catch (e) {
+  console.log("⚠️ Bad tag:", name);
+}
 
 res.json({
   air: tags.encodedBy || null,
@@ -441,8 +453,14 @@ async function getFileWithTags(folder, file) {
       path: `${folder}/${file.name}`
     });
 
-    const buffer = download.result.fileBinary;
-    const tags = NodeID3.read(buffer);
+    const buffer = Buffer.from(download.result.fileBinary);
+    let tags = {};
+
+try {
+  tags = NodeID3.read(buffer);
+} catch (e) {
+  console.log("⚠️ Bad tag:", name);
+}
 
     return {
       name: file.name,
@@ -460,13 +478,13 @@ async function getFileWithTags(folder, file) {
   }
 }
 
-// =====================
-// TEST
-// =====================
-app.get("/", (req, res) => {
-  res.send("API is working");
-});
+app.use((err, req, res, next) => {
+  console.error("🔥 GLOBAL ERROR:", err);
 
-app.listen(PORT, () => {
-  console.log("API running on port", PORT);
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  res.status(500).json({
+    error: "Server error",
+    details: err.message
+  });
 });
