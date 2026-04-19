@@ -35,8 +35,6 @@ app.use(cors({
 
 app.options("*", cors());
 
-const PORT = process.env.PORT;
-
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
 const users = [
@@ -510,4 +508,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 API running on port ${PORT}`);
 });
-
