@@ -504,3 +504,12 @@ app.use((err, req, res, next) => {
     details: err.message
   });
 });
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 API running on port ${PORT}`);
+});
+
+
+
