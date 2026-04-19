@@ -23,7 +23,6 @@ const dbx = new Dropbox({
 const app = express();
 app.use(cors({
   origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
     "Authorization",
@@ -33,7 +32,10 @@ app.use(cors({
   ]
 }));
 
+// 🔥 IMPORTANT: handle preflight
 app.options("*", cors());
+
+const PORT = process.env.PORT;
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -78,36 +80,6 @@ function auth(req, res, next) {
   }
 }
 
-
-const LIBRARY_FOLDERS = {
-  music: "/MUS",
-  sweepers: "/SWP"
-};
-
-async function listFolder(folderPath) {
-  let allFiles = [];
-
-  let response = await dbx.filesListFolder({
-    path: folderPath
-  });
-
-  allFiles.push(...(response.result.entries || []));
-
-  while (response.result.has_more) {
-    response = await dbx.filesListFolderContinue({
-      cursor: response.result.cursor
-    });
-
-    allFiles.push(...(response.result.entries || []));
-  }
-
-  return allFiles
-    .filter(f => f[".tag"] === "file" && f.name)
-    .map(f => f.name)
-    .sort((a, b) => a.localeCompare(b));
-}
-
-
 app.post("/upload", auth, async (req, res) => {
   try {
     const filename = req.headers["x-filename"];
@@ -147,7 +119,7 @@ app.post("/upload", auth, async (req, res) => {
         air += "F000000000000000000000000000000000000000000000000000000000000000000000000";
 
         // ✅ WRITE ONLY AIR TAG (NO CUSTOM TAGS)
-        const taggedBuffer = NodeID3.update({
+        const taggedBuffer = NodeID3.write({
           title: "VO TRACK",
           artist: "JOCK",
           encodedBy: air
@@ -221,9 +193,7 @@ app.get("/logs/:filename", auth, async (req, res) => {
       path: `/LOGS/${req.params.filename}`
     });
 
-    const content = Buffer
-  .from(file.result.fileBinary)
-  .toString("utf-8");
+    const content = file.result.fileBinary.toString("utf-8");
 
     res.send(content);
 
@@ -250,7 +220,7 @@ app.get("/audio/song/:filename", async (req, res) => {
     const fileBinary = response.result.fileBinary;
 
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(Buffer.from(fileBinary));
+    res.send(fileBinary);
 
   } catch (err) {
     console.error("SONG ERROR:", err);
@@ -267,7 +237,7 @@ app.get("/audio/sweeper/:filename", async (req, res) => {
     });
 
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(Buffer.from(response.result.fileBinary));
+    res.send(response.result.fileBinary);
 
   } catch (err) {
     console.error("SWEEPER ERROR:", err);
@@ -283,10 +253,9 @@ app.get("/played", async (req, res) => {
       path: dropboxPath
     });
 
-const fileData = Buffer.from(response.result.fileBinary);
+    const fileData = response.result.fileBinary;
 
-res.setHeader("Content-Type", "text/plain");
-res.send(fileData.toString("utf-8"));
+    res.send(fileData.toString());
   } catch (err) {
     console.error(err);
     res.status(500).send("Failed to load PLAYED.txt");
@@ -294,66 +263,16 @@ res.send(fileData.toString("utf-8"));
 });
 
 
+const LIBRARY_FOLDERS = {
+  music: "/MUS",
+  sweepers: "/SWP"
+};
+
 app.get("/library", auth, async (req, res) => {
   try {
     const type = req.query.type;
 
-    // 👉 helper to process a folder
-    const processFolder = async (folder, typeName) => {
-      const files = await listFolder(folder);
-
-      const results = await Promise.all(
-        files.map(async (name) => {
-          try {
-            const download = await dbx.filesDownload({
-              path: `${folder}/${name}`
-            });
-
-let buffer;
-
-try {
-  buffer = Buffer.from(download.result.fileBinary);
-} catch (e) {
-  console.log("⚠️ Buffer failed:", name);
-  return {
-    name,
-    artist: "",
-    title: "",
-    type: typeName
-  };
-}
-
-let tags = {};
-
-try {
-  tags = NodeID3.read(buffer);
-} catch (e) {
-  console.log("⚠️ Bad tag:", name);
-}
-
-            return {
-              name,
-              artist: tags.artist || "",
-              title: tags.title || "",
-              type: typeName
-            };
-
-          } catch (err) {
-            console.error("TAG ERROR:", name);
-            return {
-              name,
-              artist: "",
-              title: "",
-              type: typeName
-            };
-          }
-        })
-      );
-
-      return results;
-    };
-
-    // 👉 ONE TYPE
+    // 🔹 If requesting ONE category
     if (type) {
       const folder = LIBRARY_FOLDERS[type];
 
@@ -361,15 +280,18 @@ try {
         return res.status(400).json({ error: "Invalid type" });
       }
 
-      const items = await processFolder(folder, type);
+      const files = await listDropboxFolder(folder);
 
-      return res.json({ items });
+      return res.json({
+        type,
+        items: files
+      });
     }
 
-    // 👉 BOTH TYPES
+    // 🔹 If requesting ALL categories (better UX)
     const [music, sweepers] = await Promise.all([
-      processFolder(LIBRARY_FOLDERS.music, "music"),
-      processFolder(LIBRARY_FOLDERS.sweepers, "sweepers")
+      listDropboxFolder(LIBRARY_FOLDERS.music),
+      listDropboxFolder(LIBRARY_FOLDERS.sweepers)
     ]);
 
     res.json({
@@ -392,32 +314,26 @@ import path from "path";
 
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, air, type, artist, title } = req.body;
-
-    const folder = LIBRARY_FOLDERS[type || "music"];
+    const { filename, air } = req.body;
 
     const download = await dbx.filesDownload({
-      path: `${folder}/${filename}`
+      path: `/MUS/${filename}`
     });
 
-    const buffer = Buffer.from(download.result.fileBinary);
+    const buffer = download.result.fileBinary;
 
-const taggedBuffer = NodeID3.update(
-  {
-    title: title || "",
-    artist: artist || "",
-    encodedBy: air // keep AIR here
-  },
-  buffer
-);
+    const taggedBuffer = NodeID3.update(
+      { encodedBy: air },
+      buffer
+    );
 
     await dbx.filesUpload({
-      path: `${folder}/${filename}`, // ✅ FIXED
+      path: `/MUS/${filename}`,
       contents: taggedBuffer,
       mode: { ".tag": "overwrite" }
     });
 
-    console.log(`✅ AIR tag written (${type || "music"}):`, filename);
+    console.log("✅ AIR tag written:", filename);
 
     res.json({ success: true });
 
@@ -429,30 +345,21 @@ const taggedBuffer = NodeID3.update(
 
 
 
-app.get("/tag/:type/:filename", auth, async (req, res) => {
+app.get("/music/tag/:filename", auth, async (req, res) => {
   try {
-    const { type, filename } = req.params;
-
-    const folder = LIBRARY_FOLDERS[type] || "/MUS";
+    const filename = decodeURIComponent(req.params.filename);
 
     const download = await dbx.filesDownload({
-      path: `${folder}/${decodeURIComponent(filename)}`
+      path: `/MUS/${filename}`
     });
 
-    const buffer = Buffer.from(download.result.fileBinary);
-    let tags = {};
+    const buffer = download.result.fileBinary;
 
-try {
-  tags = NodeID3.read(buffer);
-} catch (e) {
-  console.log("⚠️ Bad tag:", filename);
-}
+    const tags = NodeID3.read(buffer);
 
-res.json({
-  air: tags.encodedBy || null,
-  artist: tags.artist || "",
-  title: tags.title || ""
-});
+    res.json({
+      air: tags.encodedBy || null
+    });
 
   } catch (err) {
     console.error(err);
@@ -460,51 +367,36 @@ res.json({
   }
 });
 
+async function listDropboxFolder(folderPath) {
+  let allFiles = [];
 
-async function getFileWithTags(folder, file) {
-  try {
-    const download = await dbx.filesDownload({
-      path: `${folder}/${file.name}`
+  let response = await dbx.filesListFolder({
+    path: folderPath
+  });
+
+  allFiles.push(...(response.result.entries || []));
+
+  while (response.result.has_more) {
+    response = await dbx.filesListFolderContinue({
+      cursor: response.result.cursor
     });
 
-    const buffer = Buffer.from(download.result.fileBinary);
-    let tags = {};
-
-try {
-  tags = NodeID3.read(buffer);
-} catch (e) {
-  console.log("⚠️ Bad tag:", file.name);
-}
-
-    return {
-      name: file.name,
-      artist: tags.artist || "",
-      title: tags.title || ""
-    };
-
-  } catch (err) {
-    console.error("TAG READ ERROR:", file.name);
-    return {
-      name: file.name,
-      artist: "",
-      title: ""
-    };
+    allFiles.push(...(response.result.entries || []));
   }
+
+  return allFiles
+    .filter(f => f[".tag"] === "file" && f.name)
+    .map(f => f.name)
+    .sort((a, b) => a.localeCompare(b));
 }
 
-app.use((err, req, res, next) => {
-  console.error("🔥 GLOBAL ERROR:", err);
-
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  res.status(500).json({
-    error: "Server error",
-    details: err.message
-  });
+// =====================
+// TEST
+// =====================
+app.get("/", (req, res) => {
+  res.send("API is working");
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 API running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log("API running on port", PORT);
 });
