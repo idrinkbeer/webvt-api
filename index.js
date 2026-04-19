@@ -149,7 +149,7 @@ app.post("/upload", auth, async (req, res) => {
         air += "F000000000000000000000000000000000000000000000000000000000000000000000000";
 
         // ✅ WRITE ONLY AIR TAG (NO CUSTOM TAGS)
-        const taggedBuffer = NodeID3.write({
+        const taggedBuffer = NodeID3.update({
           title: "VO TRACK",
           artist: "JOCK",
           encodedBy: air
@@ -223,7 +223,9 @@ app.get("/logs/:filename", auth, async (req, res) => {
       path: `/LOGS/${req.params.filename}`
     });
 
-    const content = file.result.fileBinary.toString("utf-8");
+    const content = Buffer
+  .from(file.result.fileBinary)
+  .toString("utf-8");
 
     res.send(content);
 
@@ -445,7 +447,7 @@ app.get("/tag/:type/:filename", auth, async (req, res) => {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", name);
+  console.log("⚠️ Bad tag:", filename);
 }
 
 res.json({
@@ -473,7 +475,7 @@ async function getFileWithTags(folder, file) {
 try {
   tags = NodeID3.read(buffer);
 } catch (e) {
-  console.log("⚠️ Bad tag:", name);
+  console.log("⚠️ Bad tag:", file.name);
 }
 
     return {
