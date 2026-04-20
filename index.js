@@ -343,21 +343,52 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
 });
 
 
-app.get("/sweepers", (req, res) => {
-  const dir = "/SWP"; // 🔥 IMPORTANT
-
+app.get("/sweepers", auth, async (req, res) => {
   try {
-    const files = fs.readdirSync(dir)
-      .filter(f => f.toLowerCase().endsWith(".mp3"));
+    let allFiles = [];
+
+    let response = await dbx.filesListFolder({
+      path: "/SWP"
+    });
+
+    allFiles.push(...(response.result.entries || []));
+
+    while (response.result.has_more) {
+      response = await dbx.filesListFolderContinue({
+        cursor: response.result.cursor
+      });
+
+      allFiles.push(...(response.result.entries || []));
+    }
+
+    const files = allFiles
+      .filter(f => f[".tag"] === "file" && f.name)
+      .map(f => f.name)
+      .sort((a, b) => a.localeCompare(b));
 
     res.json(files);
+
   } catch (err) {
-    console.error("SWP error:", err);
+    console.error("SWP ERROR:", err);
     res.status(500).json([]);
   }
 });
-app.get("/audio/sweeper/:file", (req, res) => {
-  res.sendFile(path.join("/SWP", req.params.file));
+
+app.get("/audio/sweeper/:filename", async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename).trim();
+
+    const response = await dbx.filesDownload({
+      path: `/SWP/${filename}`
+    });
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(response.result.fileBinary);
+
+  } catch (err) {
+    console.error("SWP AUDIO ERROR:", err);
+    res.status(404).send("Sweeper not found");
+  }
 });
 
 // =====================
