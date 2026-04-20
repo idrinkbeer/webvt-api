@@ -250,33 +250,52 @@ app.get("/music", auth, async (req, res) => {
   try {
     let allFiles = [];
 
-    // 1️⃣ first call
-    let response = await dbx.filesListFolder({
-      path: "/MUS"
-    });
-
+    let response = await dbx.filesListFolder({ path: "/MUS" });
     allFiles.push(...(response.result.entries || []));
 
-    // 2️⃣ keep fetching if more
     while (response.result.has_more) {
       response = await dbx.filesListFolderContinue({
         cursor: response.result.cursor
       });
-
       allFiles.push(...(response.result.entries || []));
     }
 
-    // 3️⃣ filter files
-    const files = allFiles
-      .filter(f => f[".tag"] === "file" && f.name)
-      .map(f => f.name)
-      .sort((a, b) => a.localeCompare(b));
+    const results = [];
 
-    res.json(files);
+    for (const f of allFiles) {
+      if (f[".tag"] !== "file") continue;
+
+      try {
+        const download = await dbx.filesDownload({
+          path: `/MUS/${f.name}`
+        });
+
+        const tags = NodeID3.read(download.result.fileBinary);
+
+        results.push({
+          filename: f.name,
+          artist: tags.artist || "Unknown",
+          title: tags.title || "Untitled",
+          year: tags.year || "",
+          type: "MUS"
+        });
+
+      } catch {
+        results.push({
+          filename: f.name,
+          artist: "Unknown",
+          title: "Untitled",
+          year: "",
+          type: "MUS"
+        });
+      }
+    }
+
+    res.json(results);
 
   } catch (err) {
     console.error("MUSIC ERROR:", err);
-    res.status(500).json({ error: "Failed to load music" });
+    res.status(500).json([]);
   }
 });
 
@@ -363,26 +382,48 @@ app.get("/sweepers", auth, async (req, res) => {
   try {
     let allFiles = [];
 
-    let response = await dbx.filesListFolder({
-      path: "/SWP"
-    });
-
+    let response = await dbx.filesListFolder({ path: "/SWP" });
     allFiles.push(...(response.result.entries || []));
 
     while (response.result.has_more) {
       response = await dbx.filesListFolderContinue({
         cursor: response.result.cursor
       });
-
       allFiles.push(...(response.result.entries || []));
     }
 
-    const files = allFiles
-      .filter(f => f[".tag"] === "file" && f.name)
-      .map(f => f.name)
-      .sort((a, b) => a.localeCompare(b));
+    const results = [];
 
-    res.json(files);
+    for (const f of allFiles) {
+      if (f[".tag"] !== "file") continue;
+
+      try {
+        const download = await dbx.filesDownload({
+          path: `/SWP/${f.name}`
+        });
+
+        const tags = NodeID3.read(download.result.fileBinary);
+
+        results.push({
+          filename: f.name,
+          artist: tags.artist || "SWP",
+          title: tags.title || "Sweeper",
+          year: tags.year || "",
+          type: "SWP"
+        });
+
+      } catch {
+        results.push({
+          filename: f.name,
+          artist: "SWP",
+          title: "Sweeper",
+          year: "",
+          type: "SWP"
+        });
+      }
+    }
+
+    res.json(results);
 
   } catch (err) {
     console.error("SWP ERROR:", err);
