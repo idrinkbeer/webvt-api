@@ -260,36 +260,17 @@ app.get("/music", auth, async (req, res) => {
       allFiles.push(...(response.result.entries || []));
     }
 
-    const results = [];
+    const results = allFiles
+      .filter(f => f[".tag"] === "file")
+      .map(f => ({
+        filename: f.name,
+        artist: "",
+        title: f.name.replace(".mp3", ""),
+        year: "",
+        type: "MUS"
+      }));
 
-    for (const f of allFiles) {
-      if (f[".tag"] !== "file") continue;
-
-      try {
-        const download = await dbx.filesDownload({
-          path: `/MUS/${f.name}`
-        });
-
-        const tags = NodeID3.read(download.result.fileBinary);
-
-        results.push({
-          filename: f.name,
-          artist: tags.artist || "Unknown",
-          title: tags.title || "Untitled",
-          year: tags.year || "",
-          type: "MUS"
-        });
-
-      } catch {
-        results.push({
-          filename: f.name,
-          artist: "Unknown",
-          title: "Untitled",
-          year: "",
-          type: "MUS"
-        });
-      }
-    }
+    console.log("✅ MUSIC FILES:", results.length);
 
     res.json(results);
 
@@ -392,36 +373,17 @@ app.get("/sweepers", auth, async (req, res) => {
       allFiles.push(...(response.result.entries || []));
     }
 
-    const results = [];
+    const results = allFiles
+      .filter(f => f[".tag"] === "file")
+      .map(f => ({
+        filename: f.name,
+        artist: "SWP",
+        title: f.name.replace(".mp3", ""),
+        year: "",
+        type: "SWP"
+      }));
 
-    for (const f of allFiles) {
-      if (f[".tag"] !== "file") continue;
-
-      try {
-        const download = await dbx.filesDownload({
-          path: `/SWP/${f.name}`
-        });
-
-        const tags = NodeID3.read(download.result.fileBinary);
-
-        results.push({
-          filename: f.name,
-          artist: tags.artist || "SWP",
-          title: tags.title || "Sweeper",
-          year: tags.year || "",
-          type: "SWP"
-        });
-
-      } catch {
-        results.push({
-          filename: f.name,
-          artist: "SWP",
-          title: "Sweeper",
-          year: "",
-          type: "SWP"
-        });
-      }
-    }
+    console.log("✅ SWEEPERS:", results.length);
 
     res.json(results);
 
