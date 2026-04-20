@@ -344,12 +344,20 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
 
 
 app.get("/sweepers", (req, res) => {
-  const files = fs.readdirSync("/path/to/SWP");
-  res.json(files);
-});
+  const dir = "/SWP"; // 🔥 IMPORTANT
 
+  try {
+    const files = fs.readdirSync(dir)
+      .filter(f => f.toLowerCase().endsWith(".mp3"));
+
+    res.json(files);
+  } catch (err) {
+    console.error("SWP error:", err);
+    res.status(500).json([]);
+  }
+});
 app.get("/audio/sweeper/:file", (req, res) => {
-  res.sendFile(path.join("/path/to/SWP", req.params.file));
+  res.sendFile(path.join("/SWP", req.params.file));
 });
 
 // =====================
