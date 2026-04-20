@@ -358,20 +358,6 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
   }
 });
 
-    const buffer = download.result.fileBinary;
-
-    const tags = NodeID3.read(buffer);
-
-    res.json({
-      air: tags.encodedBy || null
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.json({ air: null });
-  }
-});
-
 
 app.get("/sweepers", auth, async (req, res) => {
   try {
