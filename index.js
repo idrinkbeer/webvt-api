@@ -342,6 +342,16 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
   }
 });
 
+
+app.get("/sweepers", (req, res) => {
+  const files = fs.readdirSync("/path/to/SWP");
+  res.json(files);
+});
+
+app.get("/audio/sweeper/:file", (req, res) => {
+  res.sendFile(path.join("/path/to/SWP", req.params.file));
+});
+
 // =====================
 // TEST
 // =====================
