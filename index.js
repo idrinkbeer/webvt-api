@@ -289,26 +289,34 @@ import path from "path";
 
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, air } = req.body;
+    const { filename, air, type, artist, title, year } = req.body;
+
+    const folder = type === "SWP" ? "/SWP" : "/MUS";
 
     const download = await dbx.filesDownload({
-      path: `/MUS/${filename}`
+      path: `${folder}/${filename}`
     });
 
     const buffer = download.result.fileBinary;
 
+    // 🔥 WRITE FULL ID3 TAGS
     const taggedBuffer = NodeID3.update(
-      { encodedBy: air },
+      {
+        artist: artist || "",
+        title: title || "",
+        year: year || "",
+        encodedBy: air
+      },
       buffer
     );
 
     await dbx.filesUpload({
-      path: `/MUS/${filename}`,
+      path: `${folder}/${filename}`,
       contents: taggedBuffer,
       mode: { ".tag": "overwrite" }
     });
 
-    console.log("✅ AIR tag written:", filename);
+    console.log(`✅ AIR tag written (${type}):`, filename);
 
     res.json({ success: true });
 
@@ -324,9 +332,31 @@ app.get("/music/tag/:filename", auth, async (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
 
-    const download = await dbx.filesDownload({
-      path: `/MUS/${filename}`
+    let path = `/MUS/${filename}`;
+
+    try {
+      await dbx.filesGetMetadata({ path });
+    } catch {
+      path = `/SWP/${filename}`; // 👈 fallback to sweepers
+    }
+
+    const download = await dbx.filesDownload({ path });
+
+    const buffer = download.result.fileBinary;
+    const tags = NodeID3.read(buffer);
+
+    res.json({
+      air: tags.encodedBy || null,
+      artist: tags.artist || "",
+      title: tags.title || "",
+      year: tags.year || ""
     });
+
+  } catch (err) {
+    console.error(err);
+    res.json({ air: null });
+  }
+});
 
     const buffer = download.result.fileBinary;
 
