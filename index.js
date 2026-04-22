@@ -28,9 +28,23 @@ app.use(cors({
     "Authorization",
     "X-Filename",
     "X-SecTone",
-    "X-Intro"
+    "X-Intro",
+    "X-MRK1": outMRK1Time
   ]
 }));
+
+function updateAIRField(air, start, length, value) {
+  if (!air || !air.startsWith("AIR#")) return air;
+
+  const padded = String(Math.floor(value)).padStart(length, "0");
+
+  return (
+    air.substring(0, start - 1) +
+    padded +
+    air.substring(start - 1 + length)
+  );
+}
+
 
 // 🔥 IMPORTANT: handle preflight
 app.options("*", cors());
@@ -104,6 +118,7 @@ app.post("/upload", auth, async (req, res) => {
         const ctAUDs = 0;
         const ctINT  = intro * 1000;
         const ctSEG  = secTone * 1000;
+        const mrk1 = parseFloat(req.headers["x-mrk1"] || "0");
 
         // ⚠️ For VTs we don’t know duration easily → use secTone or fallback
         const ctAUDe = ctSEG || 0;
@@ -289,7 +304,7 @@ import path from "path";
 
 app.post("/sectone", auth, express.json(), async (req, res) => {
   try {
-    const { filename, air, type, artist, title, year } = req.body;
+    const { filename, air, type, artist, title, year, mrk1 } = req.body;
 
     const folder = type === "SWP" ? "/SWP" : "/MUS";
 
@@ -299,13 +314,20 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
     const buffer = download.result.fileBinary;
 
-    // 🔥 WRITE FULL ID3 TAGS
+    let updatedAir = air;
+
+    // 🟡 MRK1 → AIR[87–92]
+    if (mrk1 !== undefined) {
+      const mrk1Val = mrk1 * 100;
+      updatedAir = updateAIRField(updatedAir, 87, 6, mrk1Val);
+    }
+
     const taggedBuffer = NodeID3.update(
       {
         artist: artist || "",
         title: title || "",
         year: year || "",
-        encodedBy: air
+        encodedBy: updatedAir
       },
       buffer
     );
@@ -316,7 +338,7 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
       mode: { ".tag": "overwrite" }
     });
 
-    console.log(`✅ AIR tag written (${type}):`, filename);
+    console.log("✅ MRK1 updated:", filename);
 
     res.json({ success: true });
 
@@ -409,6 +431,7 @@ app.get("/audio/sweeper/:filename", async (req, res) => {
     res.status(404).send("Sweeper not found");
   }
 });
+
 
 // =====================
 // TEST
