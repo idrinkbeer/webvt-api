@@ -29,7 +29,7 @@ app.use(cors({
     "X-Filename",
     "X-SecTone",
     "X-Intro",
-    "X-MRK1": outMRK1Time
+    "X-MRK1"
   ]
 }));
 
@@ -118,7 +118,6 @@ app.post("/upload", auth, async (req, res) => {
         const ctAUDs = 0;
         const ctINT  = intro * 1000;
         const ctSEG  = secTone * 1000;
-        const mrk1 = parseFloat(req.headers["x-mrk1"] || "0");
 
         // ⚠️ For VTs we don’t know duration easily → use secTone or fallback
         const ctAUDe = ctSEG || 0;
@@ -314,7 +313,7 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
     const buffer = download.result.fileBinary;
 
-    let updatedAir = air;
+    let updatedAir = air || "AIR#000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
     // 🟡 MRK1 → AIR[87–92]
     if (mrk1 !== undefined) {
