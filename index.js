@@ -367,7 +367,7 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
 
 
-app.get("/music/tag/:filename", auth, async (req, res) => {
+app.get("/music/tag/:filename", async (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
 
