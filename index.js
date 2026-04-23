@@ -317,7 +317,7 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
 
     // 🟡 MRK1 → AIR[87–92]
     if (mrk1 !== undefined) {
-      const mrk1Val = mrk1 * 100;
+      const mrk1Val = Math.floor(mrk1);
       updatedAir = updateAIRField(updatedAir, 87, 6, mrk1Val);
     }
 
