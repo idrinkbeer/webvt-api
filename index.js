@@ -195,7 +195,7 @@ app.use("/uploads", express.static(uploadDir));
 // =====================
 // LOG LIST
 // =====================
-app.get("/logs", auth, async (req, res) => {
+app.get("/logs", async (req, res) => {
   try {
     const response = await dbx.filesListFolder({
       path: "/LOGS"
@@ -219,7 +219,7 @@ app.get("/logs", auth, async (req, res) => {
 // =====================
 // FETCH LOG CONTENT
 // =====================
-app.get("/logs/:filename", auth, async (req, res) => {
+app.get("/logs/:filename", async (req, res) => {
   try {
     const file = await dbx.filesDownload({
       path: `/LOGS/${req.params.filename}`
