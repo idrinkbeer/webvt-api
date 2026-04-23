@@ -321,11 +321,13 @@ app.post("/sectone", auth, express.json(), async (req, res) => {
       updatedAir = updateAIRField(updatedAir, 87, 6, mrk1Val);
     }
 
+    const existingTags = NodeID3.read(buffer);
+
     const taggedBuffer = NodeID3.update(
       {
-        artist: artist || "",
-        title: title || "",
-        year: year || "",
+        artist: artist ?? existingTags.artist,
+        title: title ?? existingTags.title,
+        year: year ?? existingTags.year,
         encodedBy: updatedAir
       },
       buffer
