@@ -33,6 +33,24 @@ app.use(cors({
   ]
 }));
 
+app.use((req, res, next) => {
+  const auth = req.headers.authorization || "";
+
+  // No token sent
+  if (!auth.startsWith("Bearer ")) {
+    return res.status(403).json({ error: "Missing token" });
+  }
+
+  const token = auth.replace("Bearer ", "");
+
+  // Token mismatch
+  if (token !== process.env.TOKEN) {
+    return res.status(403).json({ error: "Invalid token" });
+  }
+
+  next();
+});
+
 function updateAIRField(air, start, length, value) {
   if (!air || !air.startsWith("AIR#")) return air;
 
